@@ -14,7 +14,7 @@ If you have a Windows, Mac or Linux on your desktop you can use Docker and Devel
 1. Follow the linked instructions on how to [clone a repository locally](https://code.visualstudio.com/docs/sourcecontrol/intro-to-git#_open-a-git-repository), login to GitHub and when prompted, put in the repository URL:
 
     ```
-    https://github.com/CabrilloRoboticsClub/SUAS_ros.git    
+    https://github.com/CabrilloRoboticsClub/SUAS_ros.git
     ```
 1. You will also need to grab the recursive repositories:
     ```
