@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            "suas_cv_imageSubscriber = suas_cv.test1:main"
         ],
     },
 )
