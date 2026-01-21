@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.substitutions import PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
+#from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 
@@ -43,6 +43,11 @@ def generate_launch_description():
                     get_package_share_directory("ardupilot_gz_bringup"), 'launch', 'iris_runway.launch.py'
                 ])
             ]),
+        ),
+        Node( # works, starts the node
+            package='suas_cv',
+            executable='suas_cv_imageSubscriber',
+            name='image_subscriber',
         ),
     ])
 
