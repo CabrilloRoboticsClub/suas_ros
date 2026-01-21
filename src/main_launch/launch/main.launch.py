@@ -32,6 +32,8 @@ def generate_launch_description():
 '''
 
 #https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html#writing-launch-files
+#https://docs.ros.org/en/galactic/Tutorials/Intermediate/Launch/Using-Substitutions.html
+#https://docs.ros.org/en/foxy/Tutorials/Intermediate/Launch/Creating-Launch-Files.html
 def generate_launch_description():
     #print( get_package_share_directory("ardupilot_gz_bringup"))
     #launch_dir = ThisLaunchFileDir()#PathJoinSubstitution([FindPackageShare('launch_tutorial'), 'launch'])
