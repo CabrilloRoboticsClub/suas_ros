@@ -15,6 +15,7 @@ class ImageSubscriber(Node):
             self.listener_callback,
             10)
         self.br = CvBridge()
+        self.get_logger().info("cv_image_subcriber started")
     
     def listener_callback(self, data):
         self.get_logger().info('Receiving video frame')
