@@ -18,12 +18,14 @@ logging.basicConfig(
 #https://www.geeksforgeeks.org/computer-vision/object-detection-with-yolo-and-opencv/
 #import cv2
 import random
-# from ultralytics import YOLO
+from ultralytics import YOLO
+import math
+import numpy as np
 
 
 class ImageSubscriber(Node):
 
-    # self.yolo = YOLO("./Python/opencv/yolo11l.pt")
+    
 
     def __init__(self):
         super().__init__('image_subscriber')
@@ -35,14 +37,33 @@ class ImageSubscriber(Node):
         self.br = CvBridge()
         #self.get_logger().info("cv_image_subcriber started")
 
-
-        
-
+        self.yolo = YOLO("./yolov8n.pt")
 
         logging.info("=================== cv_image_subcriber started")
 
 
-    def getColours(cls_num):
+        # camera specs
+        HORIZONTAL_FOV = 65 # degress
+        IMAGE_WIDTH = 640 # px
+        IMAGE_HEIGHT = 480 # px
+        SENSOR_WIDTH = 6.4 # mm
+        SENSOR_HEIGHT = 4.7 # mm
+
+        fx = IMAGE_WIDTH / (2 * math.tan(HORIZONTAL_FOV / 2))
+        fy = IMAGE_HEIGHT / (2 * math.tan(HORIZONTAL_FOV / 2)) # should probably use vertical fov if I had it, but that usually isn't given
+        cx = IMAGE_WIDTH / 2
+        cy = IMAGE_HEIGHT / 2
+
+        K = np.array([
+                        [fx, 0, cx],
+                        [0, fy, cy],
+                        [0, 0, 1]
+                    ])
+
+        self.Ki = np.linalg.inv(K)
+        self.r_center = self.Ki.dot([0, 0, 1.0])
+
+    def getColours(self, cls_num):
             """Generate unique colors for each class ID"""
             random.seed(cls_num)
             return tuple(random.randint(0, 255) for _ in range(3))
@@ -95,6 +116,7 @@ class ImageSubscriber(Node):
 
         #https://github.com/realsenseai/librealsense/issues/5553
 
+        #https://discussions.unity.com/t/help-getting-angles-between-camera-and-object/855333/3
 
         #calibrate camera
         #https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
@@ -122,11 +144,12 @@ class ImageSubscriber(Node):
         #           x_world = (x_ground) * cos(angle_world)
         #           y_world = (x_ground) * sin(angle_world)
 
-        '''
-        results = yolo.track(frame, stream=True) # stream variable does not affect if data is printed to terminal
+        
+        results = self.yolo.track(frame, stream=True) # stream variable does not affect if data is printed to terminal
         #results = yolo.track(frame)
 
         for result in results:
+            #logging.info(result)
             class_names = result.names
             for box in result.boxes:
                 if box.conf[0] > 0.4:
@@ -137,7 +160,7 @@ class ImageSubscriber(Node):
 
                     conf = float(box.conf[0])
 
-                    colour = getColours(cls)
+                    colour = self.getColours(cls)
 
                     cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
 
@@ -145,8 +168,23 @@ class ImageSubscriber(Node):
                                 (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX,
                                 0.6, colour, 2)
 
+                    logging.info(f"{class_name} {conf:.2f}")
 
-        '''
+
+                    detect_center_x = (x1 + x2) / 2
+                    detect_center_y = (y1 + y2) / 2
+                    #logging.warning(f"{x1} {y1} {x2} {y2} {type(x1)} {type(detect_center_x)} {detect_center_x}")
+                    #logging.debug("Debug message")
+
+                    cv2.circle(frame, center=(int(detect_center_x), int(detect_center_y)), radius=2, color=(0, 255, 0), thickness=2)
+
+                    r = self.Ki.dot([detect_center_x, detect_center_y, 1.0])
+
+                    cos_angle = r.dot(self.r_center) / (np.linalg.norm(self.r_center) * np.linalg.norm(r))
+                    angle_radians = np.arccos(cos_angle)
+
+                    logging.info(f"Angle: {angle_radians * (180/math.pi)}")
+        
         cv2.imshow("camera", frame)
         cv2.waitKey(1)
 
@@ -159,7 +197,7 @@ def main(args=None):
         image_subscriber = ImageSubscriber()
         rclpy.spin(image_subscriber)
         image_subscriber.destroy_node()
-        
+        cv2.destroyAllWindows()
         #f.close()
 
         rclpy.shutdown()
