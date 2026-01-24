@@ -51,6 +51,11 @@ def generate_launch_description():
             executable='suas_cv_imageSubscriber',
             name='image_subscriber',
         ),
+        # Node( # works, starts the node
+        #     package='suas_cv',
+        #     executable='suas_cv_rviz_modelPublisher',
+        #     name='rviz_model_publisher',
+        # ),
     ])
 
 

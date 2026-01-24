@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "suas_cv_imageSubscriber = suas_cv.test1:main"
+            "suas_cv_imageSubscriber = suas_cv.test1:main",
+            #"suas_cv_rviz_modelPublisher = suas_cv.create_rvizModels:main",
         ],
     },
 )
