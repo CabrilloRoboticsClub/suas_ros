@@ -7,8 +7,6 @@ from cv_bridge import CvBridge
 import cv2
 
 import logging
-
-
 logging.basicConfig(
     filename='/workspaces/suas_ros/log/suas_cv_output.log',
     level=logging.INFO, # Log messages INFO or higher
@@ -16,7 +14,17 @@ logging.basicConfig(
     filemode='a' # Append logs
 )
 
+
+#https://www.geeksforgeeks.org/computer-vision/object-detection-with-yolo-and-opencv/
+#import cv2
+import random
+# from ultralytics import YOLO
+
+
 class ImageSubscriber(Node):
+
+    # self.yolo = YOLO("./Python/opencv/yolo11l.pt")
+
     def __init__(self):
         super().__init__('image_subscriber')
         self.subscription = self.create_subscription(
@@ -27,16 +35,121 @@ class ImageSubscriber(Node):
         self.br = CvBridge()
         #self.get_logger().info("cv_image_subcriber started")
 
+
+        
+
+
         logging.info("=================== cv_image_subcriber started")
+
+
+    def getColours(cls_num):
+            """Generate unique colors for each class ID"""
+            random.seed(cls_num)
+            return tuple(random.randint(0, 255) for _ in range(3))
+
     
     def listener_callback(self, data):
         #self.get_logger().info('Receiving video frame')
         logging.info("Receiving video frame")
         # As pointed in comments below modify the following to use bgr encoding
         # current_frame = self.br.imgmsg_to_cv2(data)
-        current_frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
-        cv2.imshow("camera", current_frame)
+        #current_frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
+        frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
+
+        #TODO:
+        #   1. double check that method for finding real-world angle between drone camera and object is valid
+        #       a. camera has a max view angle, which has certain width from center of camera
+        #       b. camera is square/rectangular, but assuming a circular view shouldn't change it -> max distance from center is a circle (radius) rather than having to deal with a square
+        #       c. center of object detected has a pixel location
+        #       d. ( distance(center of object detected pixel location, center of camera) ) / (pixel distance from center of camera to farthest point on camera screen) = decimal percent of distance that 2D object is of max distance from center
+        #       e. percent if 2D distance is percent of max view angle of camera -> angle from drone to object in world
+
+        # https://stackoverflow.com/questions/55080775/opencv-calculate-angle-between-camera-and-object
+        '''
+        First, let's convert your focal lens to pixels to simplify the calculations. At 4.8 um dot pitch, the width of your sensor is 4.8 * 1280 um = 6.14 mm.
+        So, in proportion, f_pix : 8 mm = 1280 pix : 6.14 mm, hence f_pix = 1667 pixels. We can now write the simplest possible pinhole camera matrix, 
+        which assumes the camera's focal axis is orthogonal to the image, and intersects it at the image's center. In numpy's notation:
+
+            K = np.array([[1667, 0, 640], [0, 1667, 512], [0, 0, 1]])
+
+        given a pair of pixel coordinates (x, y), the 3D ray r back-projecting that pixel into 3D space is given by:
+
+            Ki = np.linalg.inv(K)
+            r = Ki.dot([x, y, 1.0])
+
+        This is a "ray" in the sense that all the 3D points R = s * r, obtained by multiplying it for an arbitrary number s, 
+        will lie on the same line going through the camera center and pixel (x, y).
+
+        Therefore, given your boundary image points p1 = (x1, y1) and p2 = (x2, y2), you can compute as above the rays r1 and r2 back-projecting them into 3D space. The angle between them is easily computed from the dot product formula:
+
+            cos_angle = r1.dot(r2) / (np.linalg.norm(r1) * np.linalg.norm(r2))
+            angle_radians = np.acos(cos_angle)
+
+        To reiterate, the above formulae are just a first approximation. A real camera will have some nonlinear lens distortion which you'll have to correct to get accurate results, 
+        and will have a focal axis slightly de-centered with respect to the image. All these issues are addressed by calibrating the camera.
+        '''
+
+        #https://photo.stackexchange.com/questions/57600/calculate-angle-field-of-view-from-2d-image
+
+        #https://www.reddit.com/r/computervision/comments/ayclnf/calculate_angle_from_camera_to_detected_object/?rdt=52490
+
+        #https://github.com/realsenseai/librealsense/issues/5553
+
+
+        #calibrate camera
+        #https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+        #https://stackoverflow.com/questions/21958521/understanding-of-opencv-undistortion
+
+
+
+
+
+        #   2. while object detected, listen to some topic that tracks drone's height above ground
+        #       I don't see anything that looks like it would do this other than /air_pressure, but I doubt that is the only thing
+        #       I think there is supposed to be a 1D lidar pointing straight down
+        #       topic /navsat has latitude, longitude, and altitude
+
+        #   3. calculate real-world position of detected object
+        #       a. calculate distance along ground from drone to real world object
+        #           tanθ = x/y -> (dist_to_ground) * tanθ = x_ground
+        #       b. find orientation of drone to north
+        #       c. find 2D orientation of detected object on screen to drone (center of object detection around center of camera)
+        #           angle = atan2(y_center - y_detect, x_center - x_detect)     get angle in range (-pi, pi]
+        #           angle = (angle + 2pi) mod 2pi                               get angle in range (0, 2pi]
+        #       d. find orientation of detected object in world
+        #           angle_world = (angle of drone relative to world) + (angle of object realtive to drone)
+        #       e. find location of object in world
+        #           x_world = (x_ground) * cos(angle_world)
+        #           y_world = (x_ground) * sin(angle_world)
+
+        '''
+        results = yolo.track(frame, stream=True) # stream variable does not affect if data is printed to terminal
+        #results = yolo.track(frame)
+
+        for result in results:
+            class_names = result.names
+            for box in result.boxes:
+                if box.conf[0] > 0.4:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                    cls = int(box.cls[0])
+                    class_name = class_names[cls]
+
+                    conf = float(box.conf[0])
+
+                    colour = getColours(cls)
+
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
+
+                    cv2.putText(frame, f"{class_name} {conf:.2f}",
+                                (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX,
+                                0.6, colour, 2)
+
+
+        '''
+        cv2.imshow("camera", frame)
         cv2.waitKey(1)
+
 
 def main(args=None):
     try:
