@@ -6,19 +6,32 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 
+import logging
+
+
+logging.basicConfig(
+    filename='/workspaces/suas_ros/log/suas_cv_output.log',
+    level=logging.INFO, # Log messages INFO or higher
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='a' # Append logs
+)
+
 class ImageSubscriber(Node):
     def __init__(self):
         super().__init__('image_subscriber')
         self.subscription = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            '/camera/image',
             self.listener_callback,
             10)
         self.br = CvBridge()
-        self.get_logger().info("cv_image_subcriber started")
+        #self.get_logger().info("cv_image_subcriber started")
+
+        logging.info("=================== cv_image_subcriber started")
     
     def listener_callback(self, data):
-        self.get_logger().info('Receiving video frame')
+        #self.get_logger().info('Receiving video frame')
+        logging.info("Receiving video frame")
         # As pointed in comments below modify the following to use bgr encoding
         # current_frame = self.br.imgmsg_to_cv2(data)
         current_frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
@@ -26,11 +39,19 @@ class ImageSubscriber(Node):
         cv2.waitKey(1)
 
 def main(args=None):
-    rclpy.init(args=args)
-    image_subscriber = ImageSubscriber()
-    rclpy.spin(image_subscriber)
-    image_subscriber.destroy_node()
-    rclpy.shutdown()
+    try:
+        #f = open("/workspaces/suas_ros/log/suas_cv_output.log", "a")
+
+        rclpy.init(args=args)
+        image_subscriber = ImageSubscriber()
+        rclpy.spin(image_subscriber)
+        image_subscriber.destroy_node()
+        
+        #f.close()
+
+        rclpy.shutdown()
+    except Exception as e:
+        logging.error(e)
 
 if __name__ == '__main__':
     main()
