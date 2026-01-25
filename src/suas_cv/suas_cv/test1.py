@@ -94,7 +94,7 @@ class ImageSubscriber(Node):
             10)
         self.br = CvBridge()
 
-        
+
 
     def navsat_callback(self, msg):
         #might want to put create a timer to only read from the topic after a certain amount of time has passed
@@ -128,13 +128,15 @@ class ImageSubscriber(Node):
         #     1.0 - 2.0 * (y * y + z * z)
         #     )
 
-        #angle = 2 * math.asin(z)
+        #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+        #Qz = sin(a / 2) * 1 -> arcsin(Qz) = a / 2 -> 2 * arcsin(Qz) = a
+        angle = 2 * math.asin(z)
 
         logging.debug(msg.orientation)
         # logging.debug(a1z)
         # logging.debug((theta, math.sin(theta/2)))
         # logging.debug(math.degrees(yaw))
-        #logging.debug(math.degrees(angle))
+        logging.debug(math.degrees(angle))
 
     def getColours(self, cls_num):
             """Generate unique colors for each class ID"""
