@@ -5,11 +5,14 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
+from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import Imu
+from sensor_msgs.msg import CameraInfo
 
 import logging
 logging.basicConfig(
     filename='/workspaces/suas_ros/log/suas_cv_output.log',
-    level=logging.INFO, # Log messages INFO or higher
+    level=logging.DEBUG, # Log messages DEBUG or higher, DEBUG lowest, CRITICAL highest
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='a' # Append logs
 )
@@ -28,13 +31,12 @@ class ImageSubscriber(Node):
     
 
     def __init__(self):
-        super().__init__('image_subscriber')
-        self.subscription = self.create_subscription(
-            Image,
-            '/camera/image',
-            self.listener_callback,
-            10)
-        self.br = CvBridge()
+        super().__init__('cv_image_subscriber')
+
+        self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
+        self.lastOri = {"X":0, "Y":0, "Z":0}
+
+        
         #self.get_logger().info("cv_image_subcriber started")
 
         self.yolo = YOLO("./yolov8n.pt")
@@ -43,32 +45,102 @@ class ImageSubscriber(Node):
 
 
         # camera specs
-        HORIZONTAL_FOV = 65 # degress
-        IMAGE_WIDTH = 640 # px
-        IMAGE_HEIGHT = 480 # px
-        SENSOR_WIDTH = 6.4 # mm
-        SENSOR_HEIGHT = 4.7 # mm
+        self.camera_specs = np.array([])
+        self.camera_specs_sub_ = self.create_subscription(CameraInfo, '/camera/camera_info', self.camera_specs_callback, 10)
 
-        fx = IMAGE_WIDTH / (2 * math.tan(HORIZONTAL_FOV / 2))
-        fy = IMAGE_HEIGHT / (2 * math.tan(HORIZONTAL_FOV / 2)) # should probably use vertical fov if I had it, but that usually isn't given
-        cx = IMAGE_WIDTH / 2
-        cy = IMAGE_HEIGHT / 2
+        # HORIZONTAL_FOV = 65 # degress
+        # IMAGE_WIDTH = 640 # px
+        # IMAGE_HEIGHT = 480 # px
+        # SENSOR_WIDTH = 6.4 # mm
+        # SENSOR_HEIGHT = 4.7 # mm
 
-        K = np.array([
-                        [fx, 0, cx],
-                        [0, fy, cy],
-                        [0, 0, 1]
-                    ])
+        # drone sim camera: fx = 205.4696273803711, fy = 205.4696559906006, image: 640x480
 
-        self.Ki = np.linalg.inv(K)
+        # fx = IMAGE_WIDTH / (2 * math.tan(HORIZONTAL_FOV / 2))
+        # fy = IMAGE_HEIGHT / (2 * math.tan(HORIZONTAL_FOV / 2)) # should probably use vertical fov if I had it, but that usually isn't given
+        # cx = IMAGE_WIDTH / 2
+        # cy = IMAGE_HEIGHT / 2
+
+        # K = np.array([
+        #                 [fx, 0, cx],
+        #                 [0, fy, cy],
+        #                 [0, 0, 1]
+        #             ])
+
+        #self.Ki = np.linalg.inv(K)
+        # self.Ki = np.linalg.inv(self.camera_specs)
+        # self.r_center = self.Ki.dot([0, 0, 1.0])
+
+        
+
+        self.pos_subscription_ = self.create_subscription(NavSatFix, "/navsat", self.navsat_callback, 10)
+        self.ori_subscription_ = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
+
+    def camera_specs_callback(self, msg):
+        self.destroy_subscription(self.camera_specs_sub_)
+        self.camera_specs_sub_ = None
+        self.camera_specs = np.array([[msg.k[0], msg.k[1], msg.k[2]], [msg.k[3], msg.k[4], msg.k[5]], [msg.k[6], msg.k[7], msg.k[8]]])
+        #self.camera_specs = msg.k
+        #logging.debug(f"type of msg.k: {type(msg.k)}")
+        #logging.debug(f"msg.k: {msg.k} \n {self.camera_specs}")
+
+        self.Ki = np.linalg.inv(self.camera_specs)
         self.r_center = self.Ki.dot([0, 0, 1.0])
+
+        self.subscription = self.create_subscription(
+            Image,
+            '/camera/image',
+            self.listener_callback,
+            10)
+        self.br = CvBridge()
+
+        
+
+    def navsat_callback(self, msg):
+        #might want to put create a timer to only read from the topic after a certain amount of time has passed
+        self.lastPos["latitude"] = msg.latitude
+        self.lastPos["longitude"] = msg.longitude
+        self.lastPos["altitude"] = msg.altitude
+        #logging.debug((msg.latitude, msg.longitude, msg.altitude))
+
+    def imu_callback(self, msg):
+        #self.lastPos["orientation"] = 
+
+        #https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToAngle/index.htm
+        #a1.z = msg.orientation.z / math.sqrt(1-msg.orientation.w*msg.orientation.w)
+
+        # a1z = 0
+        # theta = 2 * math.acos(msg.orientation.w)
+        # if (math.sin(theta / 2) != 0):
+        #     logging.warn("======== math.sin(theta / 2) != 0")
+        #     a1z = msg.orientation.z / math.sin(theta / 2)
+        # else:
+        #     logging.warn(f"======== math.sin(theta / 2) == 0")
+
+
+        w = msg.orientation.w
+        x = msg.orientation.x
+        y = msg.orientation.y
+        z = msg.orientation.z
+
+        # yaw = math.atan2(
+        #     2.0 * (w * z + x * y),
+        #     1.0 - 2.0 * (y * y + z * z)
+        #     )
+
+        #angle = 2 * math.asin(z)
+
+        logging.debug(msg.orientation)
+        # logging.debug(a1z)
+        # logging.debug((theta, math.sin(theta/2)))
+        # logging.debug(math.degrees(yaw))
+        #logging.debug(math.degrees(angle))
 
     def getColours(self, cls_num):
             """Generate unique colors for each class ID"""
             random.seed(cls_num)
             return tuple(random.randint(0, 255) for _ in range(3))
 
-    
     def listener_callback(self, data):
         #self.get_logger().info('Receiving video frame')
         logging.info("Receiving video frame")
@@ -181,9 +253,14 @@ class ImageSubscriber(Node):
                     r = self.Ki.dot([detect_center_x, detect_center_y, 1.0])
 
                     cos_angle = r.dot(self.r_center) / (np.linalg.norm(self.r_center) * np.linalg.norm(r))
-                    angle_radians = np.arccos(cos_angle)
+                    angle_radians = np.arccos(cos_angle) # idk if this angle is correct, idk what the fov of the camera on the drone is, the specs I used for calculation were from a camera in the discord
 
                     logging.info(f"Angle: {angle_radians * (180/math.pi)}")
+
+
+                    x_ground = self.lastPos["altitude"] * math.tan(angle_radians)
+
+
         
         cv2.imshow("camera", frame)
         cv2.waitKey(1)
