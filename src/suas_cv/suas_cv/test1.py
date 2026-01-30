@@ -35,7 +35,7 @@ class ImageSubscriber(Node):
 
         self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
         self.lastOri = {"X":0, "Y":0, "Z":0}
-
+        self.heading = 0
         
         #self.get_logger().info("cv_image_subcriber started")
 
@@ -137,6 +137,7 @@ class ImageSubscriber(Node):
         # logging.debug((theta, math.sin(theta/2)))
         # logging.debug(math.degrees(yaw))
         logging.debug(math.degrees(angle))
+        self.heading = angle
 
     def getColours(self, cls_num):
             """Generate unique colors for each class ID"""
@@ -243,7 +244,7 @@ class ImageSubscriber(Node):
                                 0.6, colour, 2)
 
                     logging.info(f"{class_name} {conf:.2f}")
-
+                    # =============== need to filter class_name so that only the object classes was want are being processed
 
                     detect_center_x = (x1 + x2) / 2
                     detect_center_y = (y1 + y2) / 2
@@ -255,13 +256,25 @@ class ImageSubscriber(Node):
                     r = self.Ki.dot([detect_center_x, detect_center_y, 1.0])
 
                     cos_angle = r.dot(self.r_center) / (np.linalg.norm(self.r_center) * np.linalg.norm(r))
-                    angle_radians = np.arccos(cos_angle) # idk if this angle is correct, idk what the fov of the camera on the drone is, the specs I used for calculation were from a camera in the discord
+                    angle_radians = np.arccos(cos_angle)
 
                     logging.info(f"Angle: {angle_radians * (180/math.pi)}")
 
 
+
+                    # calculate distance along ground from drone to real world object
                     x_ground = self.lastPos["altitude"] * math.tan(angle_radians)
 
+                    # find 2D orientation of detected object on screen to drone (center of object detection around center of camera)
+                    angle_rel = math.atan2(y_center - y_detect, x_center - x_detect)    # get angle in range (-pi, pi]
+                    angle_rel = (angle_rel + (2 * math.pi)) % (2 * math.pi)             # get angle in range (0, 2pi]
+
+                    # find orientation of detected object in world
+                    angle_world = self.heading + angle
+
+                    # find location of object in world
+                    x_world = (x_ground) * cos(angle_world)
+                    y_world = (x_ground) * sin(angle_world)
 
         
         cv2.imshow("camera", frame)
