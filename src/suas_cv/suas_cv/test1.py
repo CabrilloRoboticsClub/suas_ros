@@ -277,8 +277,8 @@ class ImageSubscriber(Node):
                     angle_world = self.heading + angle_rel
 
                     # find location of object in world
-                    x_world = (x_ground) * cos(angle_world)
-                    y_world = (x_ground) * sin(angle_world)
+                    x_world = (x_ground) * math.cos(angle_world)
+                    y_world = (x_ground) * math.sin(angle_world)
                     logging.info(f"Position - Drone: {self.lastPos['latitude']},{self.lastPos['longitude']},{self.lastPos['altitude']}  Object: {x_world},{y_world}")
 
         
