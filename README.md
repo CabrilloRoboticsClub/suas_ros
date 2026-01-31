@@ -31,6 +31,11 @@ If you have a Windows, Mac or Linux on your desktop you can use Docker and Devel
 
 1. Create a Terminal in your vscode window with the `Terminal -> New Terminal` menu. 
 
+1. In the Terminal, install the required python packages for CV. Ultralytics is large and will take some time - a good internet connection is recommended.
+    '''
+    pip3 install -r ./src/suas_cv/suas_cv/requirements.txt
+    '''
+
 ## Quick Start 
 
 Here are some steps to test your repository. These steps work on my setup at home. The simulation stack is very heavy and may require a reasonably powerful GPU. **Run this command in the dev container terminal.**
