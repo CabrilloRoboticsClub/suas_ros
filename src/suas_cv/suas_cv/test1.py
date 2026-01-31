@@ -42,9 +42,10 @@ class ImageSubscriber(Node):
         self.yolo = YOLO("./yolov8n.pt")
 
         logging.info("=================== cv_image_subcriber started")
-
+        logging.debug(self.yolo.names) # neither "tent" nor "mannequin" are in the dataset, although "person" is, so that might also trigger
 
         # camera specs
+        self.camera_image_size = [0, 0] # width, height, in pixels
         self.camera_specs = np.array([])
         self.camera_specs_sub_ = self.create_subscription(CameraInfo, '/camera/camera_info', self.camera_specs_callback, 10)
 
@@ -80,6 +81,7 @@ class ImageSubscriber(Node):
         self.destroy_subscription(self.camera_specs_sub_)
         self.camera_specs_sub_ = None
         self.camera_specs = np.array([[msg.k[0], msg.k[1], msg.k[2]], [msg.k[3], msg.k[4], msg.k[5]], [msg.k[6], msg.k[7], msg.k[8]]])
+        self.camera_image_size = [msg.width, msg.height]
         #self.camera_specs = msg.k
         #logging.debug(f"type of msg.k: {type(msg.k)}")
         #logging.debug(f"msg.k: {msg.k} \n {self.camera_specs}")
@@ -220,6 +222,11 @@ class ImageSubscriber(Node):
         #           y_world = (x_ground) * sin(angle_world)
 
         
+        # Objects will be detected for more than 1 frame, so need to have a way to combine multiple detections of an object into one point.
+        # Since I know ahead of time what the object classes (type) will be and there are no duplicate classes, I can group detections based on class
+        # There just needs to be a way to store, fetch, and update these data points, as well as to update the place that ardupilot should go to
+        # I will just focus on combining the data, idk what to do with ardupilot
+
         results = self.yolo.track(frame, stream=True) # stream variable does not affect if data is printed to terminal
         #results = yolo.track(frame)
 
@@ -234,11 +241,8 @@ class ImageSubscriber(Node):
                     class_name = class_names[cls]
 
                     conf = float(box.conf[0])
-
                     colour = self.getColours(cls)
-
                     cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
-
                     cv2.putText(frame, f"{class_name} {conf:.2f}",
                                 (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX,
                                 0.6, colour, 2)
@@ -256,7 +260,7 @@ class ImageSubscriber(Node):
                     r = self.Ki.dot([detect_center_x, detect_center_y, 1.0])
 
                     cos_angle = r.dot(self.r_center) / (np.linalg.norm(self.r_center) * np.linalg.norm(r))
-                    angle_radians = np.arccos(cos_angle)
+                    angle_radians = np.arccos(cos_angle) # angle between vector going straight out of center of camera and location of detected object in world
 
                     logging.info(f"Angle: {angle_radians * (180/math.pi)}")
 
@@ -266,15 +270,16 @@ class ImageSubscriber(Node):
                     x_ground = self.lastPos["altitude"] * math.tan(angle_radians)
 
                     # find 2D orientation of detected object on screen to drone (center of object detection around center of camera)
-                    angle_rel = math.atan2(y_center - y_detect, x_center - x_detect)    # get angle in range (-pi, pi]
+                    angle_rel = math.atan2(self.camera_image_size[1]/2 - detect_center_y, self.camera_image_size[0]/2 - detect_center_x)    # get angle in range (-pi, pi]
                     angle_rel = (angle_rel + (2 * math.pi)) % (2 * math.pi)             # get angle in range (0, 2pi]
 
                     # find orientation of detected object in world
-                    angle_world = self.heading + angle
+                    angle_world = self.heading + angle_rel
 
                     # find location of object in world
                     x_world = (x_ground) * cos(angle_world)
                     y_world = (x_ground) * sin(angle_world)
+                    logging.info(f"Position - Drone: {self.lastPos['latitude']},{self.lastPos['longitude']},{self.lastPos['altitude']}  Object: {x_world},{y_world}")
 
         
         cv2.imshow("camera", frame)
