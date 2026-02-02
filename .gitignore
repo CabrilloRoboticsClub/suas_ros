@@ -6,3 +6,4 @@ terrain/
 eeprom.bin
 mav.*
 __pycache__
+images/
