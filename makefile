@@ -2,7 +2,7 @@
 all: colcon-build 
 
 colcon-build:
-	colcon build --allow-overriding sdformat_urdf
+	colcon build --allow-overriding sdformat_urdf --symlink-install
 	
 clean:
 	rm -rf build/ log/ install/
