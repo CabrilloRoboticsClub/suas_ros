@@ -6,6 +6,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import NavSatFix
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import CameraInfo
+#from tf_transformations import euler_from_quaternion
 
 import cv2
 import math
@@ -21,6 +22,33 @@ logging.basicConfig(
     filemode='a'
 )
 
+#https://gist.github.com/salmagro/2e698ad4fbf9dae40244769c5ab74434
+#https://robotics.stackexchange.com/questions/96357/ros2-python-quaternion-to-euler
+#https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
+def euler_from_quaternion(x, y, z, w):
+    # might want to put this into a seperate node to take in imu orientation data and output heading
+    # can comment out the code for roll and pitch since I will only be using yaw
+        """
+        Convert a quaternion into euler angles (roll, pitch, yaw)
+        roll is rotation around x in radians (counterclockwise)
+        pitch is rotation around y in radians (counterclockwise)
+        yaw is rotation around z in radians (counterclockwise)
+        """
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll_x = math.atan2(t0, t1)
+     
+        t2 = +2.0 * (w * y - z * x)
+        t2 = +1.0 if t2 > +1.0 else t2
+        t2 = -1.0 if t2 < -1.0 else t2
+        pitch_y = math.asin(t2)
+     
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw_z = math.atan2(t3, t4)
+     
+        return roll_x, pitch_y, yaw_z # in radians
+
 class Mapper(Node):
     def __init__(self):
         super().__init__('mapping_node')
@@ -34,7 +62,7 @@ class Mapper(Node):
         
 
         self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
-        self.lastImg = 0
+        self.lastImg = np.array([])
         self.lastHeading = -1000
 
         logging.info("============== mapping_node started")
@@ -55,7 +83,32 @@ class Mapper(Node):
             # although the drone's height above ground would change how much space is covered by a single image
     
     def imu_callback(self, msg):
-        self.lastHeading = 2 * math.asin(msg.orientation.z) # the range of asin is (-pi/2, pi/2], so this alone is not enough
+        #self.lastHeading = 2 * math.asin(msg.orientation.z) # the range of asin is (-pi/2, pi/2], so this alone is not enough
+        
+        # w = msg.orientation.w
+        # qx = msg.orientation.x
+        # qy = msg.orientation.y
+        # qz = msg.orientation.z
+        # tmp = math.atan2(2*(qx*qy + w*qz), w*w + qx*qx - qy*qy - qz*qz)
+        # tmp = math.degrees(tmp)
+        # tmp = (tmp + 180) % 360
+        # self.lastHeading = tmp
+
+        # quat = [
+        #     msg.orientation.x,
+        #     msg.orientation.y,
+        #     msg.orientation.z,
+        #     msg.orientation.w
+        # ]
+
+        #(roll, pitch, yaw) = euler_from_quaternion(quat)
+        (roll, pitch, yaw) = euler_from_quaternion(msg.orientation.x,
+            msg.orientation.y,
+            msg.orientation.z,
+            msg.orientation.w)
+        # logging.info((roll, pitch, yaw))
+        self.lastHeading = (yaw + 2 * math.pi) % (2 * math.pi)
+
 
     def img_listener_callback(self, msg):
 
@@ -82,8 +135,11 @@ class Mapper(Node):
     def timer_callback(self):
         #Should first check to make sure that all values I will be using are not 0/unset
         # In production, will also do a check if the altitude is high enough so the drone doesn't take a picture on the ground
-        if not (self.lastImg == 0 or self.lastHeading == -1000 or self.lastPos["latitude"] == 0):
+        #logging.debug(f"line136 {type(self.lastImg)} {self.lastHeading} {self.lastPos}")
+        if not (self.lastImg.size == 0 or self.lastHeading == -1000 or self.lastPos["latitude"] == 0):
             angleAdjust = round(math.degrees(self.lastHeading), 4 ) # might have to do more with this for actual correction # rounding to 4 digits is arbitrary, just kinda want to get rid of ultra small angles
+            #angleAdjust = round(self.lastHeading, 4 )
+            logging.debug(f"angleAdjust: {angleAdjust}")
 
             #borderWidth = math.abs(math.cos(angleAdjust)) * distToCorner
             #logging.debug(f"angleAdjust: {angleAdjust} {type(angleAdjust)} {angleAdjust % 180} {math.sin(angleAdjust%180)}")
