@@ -68,7 +68,7 @@ class Mapper(Node):
             self.lastHeading = beta
 
 
-            logging.info(f'tan {math.degrees(math.atan(math.sqrt(math.pow( msg.latitude - self.lastPos["latitude"],2) + math.pow(msg.longitude - self.lastPos["longitude"] ,2))))}')
+            #logging.info(f'tan {math.degrees(math.atan(math.sqrt(math.pow( msg.latitude - self.lastPos["latitude"],2) + math.pow(msg.longitude - self.lastPos["longitude"] ,2))))}')
             
             lat1 = self.lastPos["latitude"]
             lat2 = msg.latitude
@@ -92,6 +92,7 @@ class Mapper(Node):
             #   when beta is 269.99985104334064, bearing is 90.00075672182112
 
             #   when beta is 219.9971989426276, bearing is 149.8402788532371
+            #   when beta is 26.559046348171755, bearing is -19.095648566865947
 
             # confirmed that when taking a measurement and moving in the same direction without changing angle, 
             #   the measurement by lastHeading and bearing will be the same as the previous measurement
