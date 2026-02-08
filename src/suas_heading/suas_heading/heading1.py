@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
-#from tf_transformations import euler_from_quaternion
+from suas_heading_msg.msg import Heading
 
 import math
 import os
@@ -35,7 +35,7 @@ logging.basicConfig(
 
 
 
-class Heading(Node):
+class LocalNode(Node):
     def __init__(self):
         super().__init__('heading_node')
 
@@ -44,6 +44,8 @@ class Heading(Node):
 
         logging.info("============== heading_node started")
         
+        self.heading_publisher_ = self.create_publisher(Heading, "/heading", 10)
+
         self.pos_subscription_ = self.create_subscription(NavSatFix, "/navsat", self.navsat_callback, 10)        
         
 
@@ -71,14 +73,22 @@ class Heading(Node):
         
             #logging.debug(f"lastHeading: {self.lastHeading} degrees off of north")
 
+            # not sure if I should publish at the same rate as navsat or just whenever heading changes
+            #   if I want to publish at the same rate as navsat, then I would have to declare "beta" outside this  if  statement 
+            #       and put the publisher at the end of the function call, outside the statement
+
+            newMsg = Heading()
+            newMsg.heading_deg = beta
+            self.heading_publisher_.publish(newMsg)
+
 
 def main(args=None):
     try:
         rclpy.init(args=args)
 
-        heading = Heading()
-        rclpy.spin(heading)
-        heading.destroy_node()
+        localNode = LocalNode()
+        rclpy.spin(localNode)
+        localNode.destroy_node()
         
         rclpy.shutdown()
 
