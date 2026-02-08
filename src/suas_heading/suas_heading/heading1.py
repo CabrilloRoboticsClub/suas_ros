@@ -17,13 +17,9 @@ logging.basicConfig(
     filemode='a'
 )
 
-class Mapper(Node):
+class Heading(Node):
     def __init__(self):
         super().__init__('heading_node')
-
-        
-
-        
 
         self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
         self.lastHeading = -1000
@@ -70,15 +66,16 @@ class Mapper(Node):
 
             #logging.info(f'tan {math.degrees(math.atan(math.sqrt(math.pow( msg.latitude - self.lastPos["latitude"],2) + math.pow(msg.longitude - self.lastPos["longitude"] ,2))))}')
             
-            lat1 = self.lastPos["latitude"]
-            lat2 = msg.latitude
-            long1 = self.lastPos["longitude"]
-            long2 = msg.longitude
+            # lat1 = self.lastPos["latitude"]
+            # lat2 = msg.latitude
+            # long1 = self.lastPos["longitude"]
+            # long2 = msg.longitude
 
-            y = math.sin(long2 - long1) * math.cos(lat2)
-            x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(long2 - long1)
-            bearing = math.atan2(y, x)
-            logging.info(f"bearing: {math.degrees(bearing)}")
+            # y = math.sin(long2 - long1) * math.cos(lat2)
+            # x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(long2 - long1)
+            # bearing = math.atan2(y, x)
+            # logging.info(f"bearing: {math.degrees(bearing)}")
+
             # bearing is from [-180, 180)
             # theta is from [0, 360)
             # moving red arrow in gazebo to the left is towards true north (~360/0 segrees off of true north)
@@ -97,24 +94,25 @@ class Mapper(Node):
             # confirmed that when taking a measurement and moving in the same direction without changing angle, 
             #   the measurement by lastHeading and bearing will be the same as the previous measurement
             # not sure if it would be more useful to have angle from north in range [-180, 180) (bearing) or [0, 360) (beta)
-            
+            # "bearing" DOES NOT WORK PROPERLY BUT BETA DOES. DO NOT USE BEARING
+
             self.lastPos["latitude"] = msg.latitude
             self.lastPos["longitude"] = msg.longitude
         
-            logging.debug(f"lastHeading: {self.lastHeading} degrees off of north")
+            #logging.debug(f"lastHeading: {self.lastHeading} degrees off of north")
 
 
 def main(args=None):
     try:
         rclpy.init(args=args)
 
-        mapper = Mapper()
-        rclpy.spin(mapper)
-        mapper.destroy_node()
+        heading = Heading()
+        rclpy.spin(heading)
+        heading.destroy_node()
         
         rclpy.shutdown()
 
-        logging.info("******** heading_node shut down")
+        logging.info("******** heading_node shut down") # doesn't seem to ever run
     except Exception as e:
         #exc_type, exc_obj, exc_tb = sys.exc_info()
         #lineno = exc_tb.tb_lineno
