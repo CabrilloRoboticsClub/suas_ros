@@ -17,6 +17,24 @@ logging.basicConfig(
     filemode='a'
 )
 
+
+# beta is in range [0, 360) degrees
+# "bearing" DOES NOT WORK PROPERLY BUT BETA DOES. DO NOT USE BEARING.
+#   "bearing" HOW NOW BEEN REMOVED
+# with beta (heading)
+#   north is 0 degrees
+#   west is 270 degrees
+#   east is 90 degrees
+#   south is 180 degrees
+
+
+# moving red arrow in gazebo to the left is towards true north (~360/0 segrees off of true north)
+# moving red arrow in gazebo to the right is towards true south (~180/-180 degrees off of true north)
+# moving green arrow in gazebo away is towards west
+# moving green arrow in gazebo closer is towards east
+
+
+
 class Heading(Node):
     def __init__(self):
         super().__init__('heading_node')
@@ -47,17 +65,6 @@ class Heading(Node):
             #    beta += 360
             
             self.lastHeading = beta
-
-            # bearing is from [-180, 180)
-            # theta is from [0, 360)
-            # moving red arrow in gazebo to the left is towards true north (~360/0 segrees off of true north)
-            # moving red arrow in gazebo to the right is towards true south (~180/-180 degrees off of true north)
-            # moving green arrow in gazebo away is towards west
-            # moving green arrow in gazebo closer is towards east
-        
-            # beta is in range [0, 360) degrees
-            # "bearing" DOES NOT WORK PROPERLY BUT BETA DOES. DO NOT USE BEARING.
-            # with beta (heading), west is 270 degrees, east is 90 degrees, south is 180 degrees, north is 0 degrees
 
             self.lastPos["latitude"] = msg.latitude
             self.lastPos["longitude"] = msg.longitude
