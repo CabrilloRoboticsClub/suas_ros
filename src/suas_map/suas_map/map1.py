@@ -4,9 +4,11 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from sensor_msgs.msg import NavSatFix
-from sensor_msgs.msg import Imu
+#from sensor_msgs.msg import Imu
 from sensor_msgs.msg import CameraInfo
 #from tf_transformations import euler_from_quaternion
+
+from suas_heading_msg.msg import Heading
 
 import cv2
 import math
@@ -25,6 +27,7 @@ logging.basicConfig(
 #https://gist.github.com/salmagro/2e698ad4fbf9dae40244769c5ab74434
 #https://robotics.stackexchange.com/questions/96357/ros2-python-quaternion-to-euler
 #https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/
+'''
 def euler_from_quaternion(x, y, z, w):
     # might want to put this into a seperate node to take in imu orientation data and output heading
     # can comment out the code for roll and pitch since I will only be using yaw
@@ -48,6 +51,7 @@ def euler_from_quaternion(x, y, z, w):
         yaw_z = math.atan2(t3, t4)
      
         return roll_x, pitch_y, yaw_z # in radians
+'''
 
 class Mapper(Node):
     def __init__(self):
@@ -70,8 +74,9 @@ class Mapper(Node):
         self.pos_subscription_ = self.create_subscription(NavSatFix, "/navsat", self.navsat_callback, 10)
         self.img_subscription_ = self.create_subscription(Image, "/camera/image", self.img_listener_callback, 10)
         self.br = CvBridge() # used for turning raw image data into something usable
-        self.ori_subscription_ = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
-        
+        #self.ori_subscription_ = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
+        self.heading_subscription_ = self.create_subscription(Heading, "/heading", self.heading_callback, 10)
+
         self.camera_specs_sub_ = self.create_subscription(CameraInfo, '/camera/camera_info', self.camera_specs_callback, 10)
         
 
@@ -81,7 +86,7 @@ class Mapper(Node):
         self.lastPos["altitude"] = msg.altitude 
             # I don't think altitude is necessary outside of ensuring that an image is not taken before the drone gets up to cruising altitude
             # although the drone's height above ground would change how much space is covered by a single image
-    
+    '''
     def imu_callback(self, msg):
         #self.lastHeading = 2 * math.asin(msg.orientation.z) # the range of asin is (-pi/2, pi/2], so this alone is not enough
         
@@ -108,7 +113,10 @@ class Mapper(Node):
             msg.orientation.w)
         # logging.info((roll, pitch, yaw))
         self.lastHeading = (yaw + 2 * math.pi) % (2 * math.pi)
+    '''
 
+    def heading_callback(self, msg):
+        self.lastHeading = msg.heading_deg
 
     def img_listener_callback(self, msg):
 
@@ -126,9 +134,12 @@ class Mapper(Node):
         self.cameraSpecs["FOVx"] = 2 * math.atan(msg.width / (2 * self.cameraSpecs["fx"]) )
         self.cameraSpecs["FOVy"] = 2 * math.atan(msg.height / (2 * self.cameraSpecs["fy"]) )
 
-        distToCorner = math.sqrt(math.pow(self.cameraSpecs["width"]/2 ,2) + math.pow(self.cameraSpecs["height"]/2 ,2))
+        self.shortFOV = min(self.cameraSpecs["FOVx"], self.cameraSpecs["FOVy"])
+
+        self.distToCorner = math.sqrt(math.pow(self.cameraSpecs["width"]/2 ,2) + math.pow(self.cameraSpecs["height"]/2 ,2))
         #self.maxDiff = [distToCorner - self.cameraSpecs["width"], distToCorner - self.cameraSpecs["height"]]
-        self.maxDiff = distToCorner - max(self.cameraSpecs["width"], self.cameraSpecs["height"])
+        #logging.debug(f'{distToCorner}  {self.cameraSpecs["width"]}  {self.cameraSpecs["width"]/2}')
+        self.maxDiff = self.distToCorner - max(self.cameraSpecs["width"], self.cameraSpecs["height"])/2
 
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -137,32 +148,7 @@ class Mapper(Node):
         # In production, will also do a check if the altitude is high enough so the drone doesn't take a picture on the ground
         #logging.debug(f"line136 {type(self.lastImg)} {self.lastHeading} {self.lastPos}")
         if not (self.lastImg.size == 0 or self.lastHeading == -1000 or self.lastPos["latitude"] == 0):
-            angleAdjust = round(math.degrees(self.lastHeading), 4 ) # might have to do more with this for actual correction # rounding to 4 digits is arbitrary, just kinda want to get rid of ultra small angles
-            #angleAdjust = round(self.lastHeading, 4 )
-            logging.debug(f"angleAdjust: {angleAdjust}")
-
-            #borderWidth = math.abs(math.cos(angleAdjust)) * distToCorner
-            #logging.debug(f"angleAdjust: {angleAdjust} {type(angleAdjust)} {angleAdjust % 180} {math.sin(angleAdjust%180)}")
-            borderWidth = int( math.sin(angleAdjust % 180) * self.maxDiff )
             
-            #https://geeksforgeeks.org/python/how-to-rotate-an-image-using-python/
-            borderedImage = cv2.copyMakeBorder(
-                src=self.lastImg,
-                top=borderWidth,
-                bottom=borderWidth,
-                left=borderWidth,
-                right=borderWidth,
-                borderType=cv2.BORDER_CONSTANT,
-                value=[0,0,0,0]
-            )
-
-            matrix = cv2.getRotationMatrix2D(( (self.cameraSpecs["width"] + borderWidth)/2, (self.cameraSpecs["height"] + borderWidth)/2 ), angleAdjust, 1)
-            rotated = cv2.warpAffine(borderedImage, matrix, (np.size(borderedImage, 0), np.size(borderedImage, 1))) # https://geeksforgeeks.org/python/numpy-size-function-python/
-
-            half_w_ground = self.lastPos["altitude"] * math.tan(self.cameraSpecs["FOVx"]/2)
-            half_h_ground = self.lastPos["altitude"] * math.tan(self.cameraSpecs["FOVy"]/2)
-            # (2 * half_w_ground) * (2 * half_h_ground) = area on the ground covered by the image
-
             makeNewTile = False
 
             if (self.allTileLocs.__len__() == 0):
@@ -177,13 +163,63 @@ class Mapper(Node):
                 
                 # Could also have the determination be if the distance is twice the shortest half ground side
                 # as doing it off of just distance is going to leave a gap if the drone is flying ~perpendicular to north and the FOVy is much greater than FOVx
-                if gap >= (2 * prevHalfGroundY) - 0.5: # -0.5 so there is a little overlap
+                #if gap >= (2 * prevHalfGroundY) - 0.5: # -0.5 so there is a little overlap
+                shortHalfGround = self.lastPos["altitude"] * math.tan(self.shortFOV/2) # never used again after this check
+                if gap >= shortHalfGround:
                     makeNewTile = True
-                    logging.info(f"+++++ gap is big enough, {prevHalfGroundY}, {gap} >= {(2 * prevHalfGroundY) - 0.5}")
+                    #logging.info(f"+++++ gap is big enough, {prevHalfGroundY}, {gap} >= {(2 * prevHalfGroundY) - 0.5}")
+                    logging.info(f"+++++ gap is big enough, {shortHalfGround}, {gap} >= {shortHalfGround}")
                 else:
-                    logging.info(f"----- gap is too small, {prevHalfGroundY}, {gap} >= {(2 * prevHalfGroundY) - 0.5}")
+                    #logging.info(f"----- gap is too small, {prevHalfGroundY}, {gap} >= {(2 * prevHalfGroundY) - 0.5}")
+                    logging.info(f"----- gap is too small, {shortHalfGround}, {gap} >= {shortHalfGround}")
+
+            
 
             if makeNewTile:
+                #angleAdjust = round(math.degrees(self.lastHeading), 4 ) # might have to do more with this for actual correction # rounding to 4 digits is arbitrary, just kinda want to get rid of ultra small angles
+                angleAdjust = round(self.lastHeading, 4)
+                angleAdjust = 45
+                logging.debug(f"angleAdjust: {angleAdjust}  maxDiff: {self.maxDiff}")
+
+                #borderWidth = math.abs(math.cos(angleAdjust)) * distToCorner
+                #logging.debug(f"angleAdjust: {angleAdjust} {type(angleAdjust)} {angleAdjust % 180} {math.sin(angleAdjust%180)}")
+                #borderWidth = int( math.sin(angleAdjust % 180) * self.maxDiff )
+                #borderWidth = int(max(self.cameraSpecs["width"]))
+                borderWidth = int(math.ceil(self.maxDiff))
+                logging.debug(f"borderWidth: {borderWidth}")
+                
+                imgWithAlpha = cv2.cvtColor(self.lastImg, cv2.COLOR_BGR2BGRA)
+                cv2.imshow("with alpha",imgWithAlpha)
+                cv2.waitKey(0)
+
+                #https://geeksforgeeks.org/python/how-to-rotate-an-image-using-python/
+                borderedImage = cv2.copyMakeBorder(
+                    src=imgWithAlpha,
+                    top=borderWidth,
+                    bottom=borderWidth,
+                    left=borderWidth,
+                    right=borderWidth,
+                    borderType=cv2.BORDER_CONSTANT,
+                    value=[0,0,0,0]
+                )
+
+                cv2.imshow("with border",borderedImage)
+                cv2.waitKey(0)
+
+                matrix = cv2.getRotationMatrix2D(( (self.cameraSpecs["width"] + borderWidth)/2, (self.cameraSpecs["height"] + borderWidth)/2 ), angleAdjust, 1)
+                #rotated = cv2.warpAffine(borderedImage, matrix, (np.size(borderedImage, 0), np.size(borderedImage, 1))) # https://geeksforgeeks.org/python/numpy-size-function-python/
+                rotated  = cv2.warpAffine(src=borderedImage, M=matrix, dsize=(2 * int(self.distToCorner), 2 * int(self.distToCorner)))
+
+                cv2.imshow("with rotation",rotated)
+                cv2.waitKey(0)
+
+                half_w_ground = self.lastPos["altitude"] * math.tan(self.cameraSpecs["FOVx"]/2)
+                half_h_ground = self.lastPos["altitude"] * math.tan(self.cameraSpecs["FOVy"]/2)
+                # (2 * half_w_ground) * (2 * half_h_ground) = area on the ground covered by the image
+
+
+
+
                 self.allTileLocs.append({"pos":self.lastPos, "num":self.imgCounter, "halfGround":[half_w_ground, half_h_ground]})
                 #cv2.imwrite(os.getcwd() + "/images/" + self.imgCounter + ".png", rotated)
                 #cv2.imwrite(f"{os.getcwd()}/images/{self.imgCounter}.png", rotated)

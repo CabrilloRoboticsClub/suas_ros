@@ -56,6 +56,12 @@ def generate_launch_description():
         #     executable='suas_cv_rviz_modelPublisher',
         #     name='rviz_model_publisher',
         # ),
+        
+        Node( # works, starts the node
+            package='suas_heading',
+            executable='suas_heading',
+            name='heading_node',
+        ),
         Node( # works, starts the node
             package='suas_map',
             executable='suas_mapping',
