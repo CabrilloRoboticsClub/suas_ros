@@ -1,0 +1,8 @@
+https://developer.nvidia.com/embedded/learn/get-started-jetson-orin-nano-devkit
+
+
+
+https://medium.com/@matt.dixon1010/jetson-orin-nano-super-developer-kit-initial-setup-fccba1d46b09
+
+
+
