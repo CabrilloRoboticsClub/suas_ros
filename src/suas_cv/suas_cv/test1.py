@@ -6,8 +6,10 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 from sensor_msgs.msg import NavSatFix
-from sensor_msgs.msg import Imu
+#from sensor_msgs.msg import Imu
 from sensor_msgs.msg import CameraInfo
+
+from suas_heading_msg.msg import Heading
 
 import logging
 logging.basicConfig(
@@ -34,7 +36,7 @@ class ImageSubscriber(Node):
         super().__init__('cv_image_subscriber')
 
         self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
-        self.lastOri = {"X":0, "Y":0, "Z":0}
+        #self.lastOri = {"X":0, "Y":0, "Z":0}
         self.heading = 0
         
         #self.get_logger().info("cv_image_subcriber started")
@@ -75,7 +77,8 @@ class ImageSubscriber(Node):
         
 
         self.pos_subscription_ = self.create_subscription(NavSatFix, "/navsat", self.navsat_callback, 10)
-        self.ori_subscription_ = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
+        #self.ori_subscription_ = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
+        self.heading_subscription_ = self.create_subscription(Heading, "/heading", self.heading_callback, 10)
 
     def camera_specs_callback(self, msg):
         self.destroy_subscription(self.camera_specs_sub_)
@@ -105,6 +108,7 @@ class ImageSubscriber(Node):
         self.lastPos["altitude"] = msg.altitude
         #logging.debug((msg.latitude, msg.longitude, msg.altitude))
 
+    '''
     def imu_callback(self, msg):
         #self.lastPos["orientation"] = 
 
@@ -140,6 +144,10 @@ class ImageSubscriber(Node):
         # logging.debug(math.degrees(yaw))
         logging.debug(math.degrees(angle))
         self.heading = angle
+    '''
+
+    def heading_callback(self, msg):
+        self.lastHeading = msg.heading_deg
 
     def getColours(self, cls_num):
             """Generate unique colors for each class ID"""
@@ -274,7 +282,7 @@ class ImageSubscriber(Node):
                     angle_rel = (angle_rel + (2 * math.pi)) % (2 * math.pi)             # get angle in range (0, 2pi]
 
                     # find orientation of detected object in world
-                    angle_world = self.heading + angle_rel
+                    angle_world = math.radians(self.lastHeading) + angle_rel
 
                     # find location of object in world
                     x_world = (x_ground) * math.cos(angle_world)
