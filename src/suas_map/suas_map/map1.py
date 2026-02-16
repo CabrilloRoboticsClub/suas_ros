@@ -11,6 +11,7 @@ from sensor_msgs.msg import CameraInfo
 from suas_heading_msg.msg import Heading
 
 import cv2
+import imutils
 import math
 import os
 #import sys
@@ -139,7 +140,8 @@ class Mapper(Node):
         self.distToCorner = math.sqrt(math.pow(self.cameraSpecs["width"]/2 ,2) + math.pow(self.cameraSpecs["height"]/2 ,2))
         #self.maxDiff = [distToCorner - self.cameraSpecs["width"], distToCorner - self.cameraSpecs["height"]]
         #logging.debug(f'{distToCorner}  {self.cameraSpecs["width"]}  {self.cameraSpecs["width"]/2}')
-        self.maxDiff = self.distToCorner - max(self.cameraSpecs["width"], self.cameraSpecs["height"])/2
+        #self.maxDiff = self.distToCorner - max(self.cameraSpecs["width"], self.cameraSpecs["height"])/2
+        self.maxDiff = self.distToCorner - min(self.cameraSpecs["width"], self.cameraSpecs["height"])/2
 
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -178,7 +180,6 @@ class Mapper(Node):
             if makeNewTile:
                 #angleAdjust = round(math.degrees(self.lastHeading), 4 ) # might have to do more with this for actual correction # rounding to 4 digits is arbitrary, just kinda want to get rid of ultra small angles
                 angleAdjust = round(self.lastHeading, 4)
-                angleAdjust = 45
                 logging.debug(f"angleAdjust: {angleAdjust}  maxDiff: {self.maxDiff}")
 
                 #borderWidth = math.abs(math.cos(angleAdjust)) * distToCorner
@@ -206,9 +207,11 @@ class Mapper(Node):
                 cv2.imshow("with border",borderedImage)
                 cv2.waitKey(0)
 
-                matrix = cv2.getRotationMatrix2D(( (self.cameraSpecs["width"] + borderWidth)/2, (self.cameraSpecs["height"] + borderWidth)/2 ), angleAdjust, 1)
-                #rotated = cv2.warpAffine(borderedImage, matrix, (np.size(borderedImage, 0), np.size(borderedImage, 1))) # https://geeksforgeeks.org/python/numpy-size-function-python/
-                rotated  = cv2.warpAffine(src=borderedImage, M=matrix, dsize=(2 * int(self.distToCorner), 2 * int(self.distToCorner)))
+                # matrix = cv2.getRotationMatrix2D(( (self.cameraSpecs["width"] + borderWidth)/2, (self.cameraSpecs["height"] + borderWidth)/2 ), angleAdjust, 1)
+                # #rotated = cv2.warpAffine(borderedImage, matrix, (np.size(borderedImage, 0), np.size(borderedImage, 1))) # https://geeksforgeeks.org/python/numpy-size-function-python/
+                # rotated  = cv2.warpAffine(src=borderedImage, M=matrix, dsize=(2 * int(self.distToCorner), 2 * int(self.distToCorner)))
+
+                rotated = imutils.rotate(borderedImage, angle=angleAdjust)
 
                 cv2.imshow("with rotation",rotated)
                 cv2.waitKey(0)
