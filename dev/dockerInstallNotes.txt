@@ -1,0 +1,20 @@
+
+
+sudo usermod -aG docker $USER
+
+
+https://superuser.com/questions/272061/reload-a-linux-users-group-assignments-without-logging-out
+su - $USER
+^ force groups to refresh without logging out then back in again
+
+
+
+doing the above two steps allows me to run the hello-world docker container but does not allow me to use a dev container
+I have to do the above two steps for every terminal session, it does not save when the terminal closes or across applications
+
+docker run hello-world
+
+
+this tutorial worked:
+https://medium.com/@wrefordmessi/how-to-fix-permission-denied-while-trying-to-connect-to-the-docker-daemon-socket-48933b9da2f4
+
