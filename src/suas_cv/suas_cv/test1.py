@@ -39,6 +39,11 @@ class ImageSubscriber(Node):
         #self.lastOri = {"X":0, "Y":0, "Z":0}
         self.heading = 0
         
+
+        self.detectWorldPos = {}
+        self.detectWorldCount = {}
+
+
         #self.get_logger().info("cv_image_subcriber started")
 
         self.yolo = YOLO("./yolov8n.pt")
@@ -289,6 +294,12 @@ class ImageSubscriber(Node):
                     y_world = (x_ground) * math.sin(angle_world)
                     logging.info(f"Position - Drone: {self.lastPos['latitude']},{self.lastPos['longitude']},{self.lastPos['altitude']}  Object: {x_world},{y_world}")
 
+                    if class_name in self.detectWorldPos.keys():
+                        self.detectWorldPos[class_name].append([x_world, y_world])
+                        self.detectWorldCount[class_name] += 1
+                    else:
+                        self.detectWorldPos[class_name] = [[x_world, y_world]]
+                        self.detectWorldCount[class_name] = 1
         
         cv2.imshow("camera", frame)
         cv2.waitKey(1)
