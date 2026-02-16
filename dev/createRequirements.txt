@@ -1,6 +1,6 @@
 use pipreqs to create requirements.txt for a specific python file.
 1. pip3 install pipreqs
 2. cd to the folder containing the python file
-3. pipreqs FILE_NAME
+3. pipreqs .
 
 use the --force flag to overwrite any existing requirements.txt
