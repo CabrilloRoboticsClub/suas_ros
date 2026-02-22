@@ -31,7 +31,7 @@ import numpy as np
 
 class LocalNode(Node):
     def __init__(self):
-        super().__init__('camera')
+        super().__init__('physical camera')
 
 
         #self.get_logger().info("cv_image_subcriber started")
@@ -39,8 +39,8 @@ class LocalNode(Node):
         logging.info("=================== camera started")
 
         # camera specs
-        self.camera_image_size = [0, 0] # width, height, in pixels
-        self.camera_specs = np.array([])
+        #self.camera_image_size = [0, 0] # width, height, in pixels
+        #self.camera_specs = np.array([])
         #self.camera_specs_sub_ = self.create_subscription(CameraInfo, '/camera/camera_info', self.camera_specs_callback, 10)
 
         self.cap = cv2.VideoCapture(0)
@@ -48,24 +48,45 @@ class LocalNode(Node):
             logging.error("Cannot open camera")
             exit()
 
-        frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        #frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        #frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         #fps = cap.get(cv2.CAP_PROP_FPS)
-        #brightness = cap.get(cv2.CAP_PROP_BRIGHTNESS)
-        #contrast = cap.get(cv2.CAP_PROP_CONTRAST)
-        logging.info(f"width, height: {frame_width, frame_height}")
+        
+        # brightness = cap.get(cv2.CAP_PROP_BRIGHTNESS)
+        # contrast = cap.get(cv2.CAP_PROP_CONTRAST)
+        #logging.info(f"width, height: {frame_width, frame_height}")
 
         #counter = 0
 
+        self.image_publisher_ = self.create_publisher(Image, '/camera/image', 10)
+        self.br = CvBridge()
+
+        # Might want to put this inside a timer, since this loop can run much faster than necessary
+        # It seems like reading the frames either slows down the loop or blocks until it can read a frame
+        #   since running a loop without reading frames is way faster than when reading frames
+        #   so a dedicated timer might not be necessary
+        #https://www.geeksforgeeks.org/computer-vision/object-detection-with-yolo-and-opencv/
         while True:
             ret, frame = self.cap.read()
-            if not ret:
-                break
-            cv2.imshow("frame", frame)
-            cv2.waitKey(1)
+            # if not ret:
+            #     break
+            # cv2.imshow("frame", frame)
+            # cv2.waitKey(1)
+
             #cv2.imwrite("./frames/" + str(counter) + ".png", frame)
-            #counter += 1
+            # logging.info(counter)
+            # counter += 1
+
+            #https://wiki.ros.org/cv_bridge/Tutorials/ConvertingBetweenROSImagesAndOpenCVImagesPython
+            try:
+                if ret:
+                    self.image_publisher_.publish(self.br.cv2_to_imgmsg(frame, encoding="passthrough"))
+            except Exception as e:
+                logging.error(e)
             
+
+
+
 
         # HORIZONTAL_FOV = 65 # degress
         # IMAGE_WIDTH = 640 # px
@@ -90,37 +111,7 @@ class LocalNode(Node):
         # self.Ki = np.linalg.inv(self.camera_specs)
         # self.r_center = self.Ki.dot([0, 0, 1.0])
 
-
-    def camera_specs_callback(self, msg):
-        self.destroy_subscription(self.camera_specs_sub_)
-        self.camera_specs_sub_ = None
-        self.camera_specs = np.array([[msg.k[0], msg.k[1], msg.k[2]], [msg.k[3], msg.k[4], msg.k[5]], [msg.k[6], msg.k[7], msg.k[8]]])
-        self.camera_image_size = [msg.width, msg.height]
-        #self.camera_specs = msg.k
-        #logging.debug(f"type of msg.k: {type(msg.k)}")
-        #logging.debug(f"msg.k: {msg.k} \n {self.camera_specs}")
-
-        self.Ki = np.linalg.inv(self.camera_specs)
-        self.r_center = self.Ki.dot([0, 0, 1.0])
-
-        self.subscription = self.create_subscription(
-            Image,
-            '/camera/image',
-            self.listener_callback,
-            10)
-        self.br = CvBridge()
-
-
-    def listener_callback(self, data):
-        #self.get_logger().info('Receiving video frame')
-        logging.info("Receiving video frame")
-        # As pointed in comments below modify the following to use bgr encoding
-        # current_frame = self.br.imgmsg_to_cv2(data)
-        #current_frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
-        frame = self.br.imgmsg_to_cv2(data, desired_encoding='bgr8')
-        
-        cv2.imshow("camera", frame)
-        cv2.waitKey(1)
+    
 
 
 def main(args=None):
@@ -130,6 +121,7 @@ def main(args=None):
         rclpy.init(args=args)
         local_node = LocalNode()
         rclpy.spin(local_node)
+        local_node.cap.release()
         local_node.destroy_node()
         cv2.destroyAllWindows()
         #f.close()
