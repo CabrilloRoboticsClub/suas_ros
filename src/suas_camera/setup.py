@@ -25,6 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             "camera_pub = suas_camera.camera1:main",
+            "camera_data_service = suas_camera.cameraData:main",
+            "test = suas_camera.cameraTestClient:main",
         ],
     },
 )

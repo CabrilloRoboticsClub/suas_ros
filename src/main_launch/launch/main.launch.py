@@ -38,19 +38,19 @@ def generate_launch_description():
     #print( get_package_share_directory("ardupilot_gz_bringup"))
     #launch_dir = ThisLaunchFileDir()#PathJoinSubstitution([FindPackageShare('launch_tutorial'), 'launch'])
     return LaunchDescription([
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                #PathJoinSubstitution([FindPackageShare('ardupilot_gz'), 'iris_runway.launch.py'])
-                PathJoinSubstitution([
-                    get_package_share_directory("ardupilot_gz_bringup"), 'launch', 'iris_runway.launch.py'
-                ])
-            ]),
-        ),
-        # Node( # works, starts the node
-        #     package='suas_cv',
-        #     executable='suas_cv_imageSubscriber',
-        #     name='image_subscriber',
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([
+        #         #PathJoinSubstitution([FindPackageShare('ardupilot_gz'), 'iris_runway.launch.py'])
+        #         PathJoinSubstitution([
+        #             get_package_share_directory("ardupilot_gz_bringup"), 'launch', 'iris_runway.launch.py'
+        #         ])
+        #     ]),
         # ),
+        Node( # works, starts the node
+            package='suas_cv',
+            executable='suas_cv_imageSubscriber',
+            name='image_subscriber',
+        ),
         # Node( # works, starts the node
         #     package='suas_cv',
         #     executable='suas_cv_rviz_modelPublisher',
@@ -62,11 +62,11 @@ def generate_launch_description():
             executable='suas_heading',
             name='heading_node',
         ),
-        Node( # works, starts the node
-            package='suas_map',
-            executable='suas_mapping',
-            name='mapping_node',
-        ),
+        # Node( # works, starts the node
+        #     package='suas_map',
+        #     executable='suas_mapping',
+        #     name='mapping_node',
+        # ),
     ])
 
 

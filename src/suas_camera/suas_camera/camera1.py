@@ -7,9 +7,9 @@ from cv_bridge import CvBridge
 import cv2
 #from sensor_msgs.msg import NavSatFix
 #from sensor_msgs.msg import Imu
-from sensor_msgs.msg import CameraInfo
+#from sensor_msgs.msg import CameraInfo
 
-from suas_heading_msg.msg import Heading
+#from suas_heading_msg.msg import Heading
 
 import os
 import logging

@@ -11,9 +11,10 @@ from sensor_msgs.msg import CameraInfo
 
 from suas_heading_msg.msg import Heading
 
+import os
 import logging
 logging.basicConfig(
-    filename='/workspaces/suas_ros/log/suas_cv_output.log',
+    filename=os.getcwd() + '/log/suas_cv_output.log',
     level=logging.DEBUG, # Log messages DEBUG or higher, DEBUG lowest, CRITICAL highest
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='a' # Append logs
@@ -37,7 +38,7 @@ class ImageSubscriber(Node):
 
         self.lastPos = {"latitude":0, "longitude":0, "altitude":0}
         #self.lastOri = {"X":0, "Y":0, "Z":0}
-        self.heading = 0
+        self.lastHeading = 0
         
 
         self.detectWorldPos = {}
