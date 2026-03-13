@@ -4,7 +4,7 @@ This document has instructions to get you started. Reach each section carefully.
 
 ## Setup (All Platforms)
 
-If you have a Windows, Mac or Linux on your desktop you can use Docker and Development Containers in vscode to do local development. However this container is currently only validated on Ubuntu. Windows has an issue where the GUI cannot be enabled and Mac is untested.
+If you have a Windows, Mac or Linux on your desktop you can use Docker Desktop and Dev Containers extension in VScode to do local development. Running Docker Desktop from an Ubuntu host is recommended, either as a dual boot or native OS. You can host the Docker container from a Windows WSL2 Ubuntu evironment, but that is more cumbersome and inefficient. Mac is untested.
 
 
 1. [Install vscode](https://code.visualstudio.com/)
@@ -14,7 +14,7 @@ If you have a Windows, Mac or Linux on your desktop you can use Docker and Devel
 1. Follow the linked instructions on how to [clone a repository locally](https://code.visualstudio.com/docs/sourcecontrol/intro-to-git#_open-a-git-repository), login to GitHub and when prompted, put in the repository URL:
 
     ```
-    https://github.com/CabrilloRoboticsClub/SUAS_ros.git    
+    git clone https://github.com/CabrilloRoboticsClub/SUAS_ros.git
     ```
 1. You will also need to grab the recursive repositories:
     ```
@@ -29,7 +29,7 @@ If you have a Windows, Mac or Linux on your desktop you can use Docker and Devel
 
     ![](doc/dev-container.png)
 
-1. Create a Terminal in your vscode window with the `Terminal -> New Terminal` menu. 
+1. Create a Terminal in your VScode window with the `Terminal -> New Terminal` menu. 
 
 ## Quick Start 
 
